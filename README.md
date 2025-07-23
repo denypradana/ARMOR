@@ -43,7 +43,7 @@ Proyek ini sangat cocok untuk penggunaan di rumah atau kantor kecil yang membutu
 
 ## Skema Pengkabelan (Wiring Diagram)
 
-![Wiring Diagram Placeholder](https://via.placeholder.com/600x400?text=Skema+Pengkabelan+Anda+Disini)
+![Wiring Diagram Placeholder](https://i.ibb.co/Xx6BsncZ/ARMOR-SCHEMATIC.png)
 
 *Pastikan koneksi berikut:*
 * **Ethernet Shield:** Langsung tumpuk di atas Arduino Uno.
