@@ -23,6 +23,100 @@ Proyek ini sangat cocok untuk penggunaan di rumah atau kantor kecil yang membutu
 * **Sinkronisasi Waktu NTP:** Memastikan waktu sistem akurat dengan melakukan sinkronisasi dengan Network Time Protocol (NTP).
 * **Mode ISP Offline:** Mencegah *reboot loop* yang tidak perlu dengan beralih ke mode pasif setelah 3 kali percobaan restart gagal.
 * **Tampilan LCD:** Menampilkan status koneksi, waktu, dan log *offline* terakhir.
+* **Tombol Navigasi:** Tombol fisik untuk beralih tampilan informasi di LCD.
+* **Tombol Reset:** Tombol fisik untuk reset/restart alat.
+
+---
+
+## Komponen yang Dibutuhkan
+
+* **Arduino Uno R3**
+* **Arduino Ethernet Shield W5100**
+* **Modul RTC DS3231**
+* **LCD 16x2 dengan Modul I2C**
+* **Relay Board 2 Channel** (sesuaikan logic aktif HIGH/LOW dengan relay Anda)
+* **Tombol Tekan** (Push Button)
+* **Elco 220uF minimal 16V**
+* **Resistor 220 Ohm**
+* Kabel Jumper
+* Kabel Ethernet
+* Power Supply untuk Arduino
+
+---
+
+## Skema Pengkabelan (Wiring Diagram)
+
+![Wiring Diagram Placeholder](ARMOR_SCHEMATIC.png)
+
+*Pastikan koneksi berikut:*
+* **Ethernet Shield:** Langsung tumpuk di atas Arduino Uno.
+    * **Penting:** Hindari penggunaan Pin **4** (SD Card), Pin **9** (W5100\_RST), Pin **10** (W5100\_CS), Pin **11** (SPI), Pin **12** (SPI), Pin **13** (SPI) untuk komponen lain agar tidak terjadi konflik.
+* **LCD I2C:**
+    * SDA ke **A4** (Arduino Uno)
+    * SCL ke **A5** (Arduino Uno)
+    * VCC ke **5V**
+    * GND ke **GND**
+* **Modul RTC DS3231:**
+    * SDA ke **A4** (Arduino Uno)
+    * SCL ke **A5** (Arduino Uno)
+    * VCC ke **5V**
+    * GND ke **GND**
+* **Relay Board:**
+    * IN1 ke **Pin 2** (Arduino Uno)
+    * IN2 ke **Pin 3** (Arduino Uno)
+    * VCC ke **5V** (Arduino Uno)
+    * GND ke **GND** (Arduino Uno)
+    * Hubungkan output relay ke kabel daya modem Anda.
+* **Tombol SELECT:**
+    * Satu kaki ke **Pin 5** (Arduino Uno)
+    * Kaki lainnya ke **GND** (Gunakan `INPUT_PULLUP` pada kode, jadi tidak perlu resistor pull-up eksternal)
+* **Tombol RESET:**
+    * Satu kaki ke **Pin RES** (Arduino Uno)
+    * Kaki lainnya ke **GND**
+* **Rangkaian POR (Power-On Reset):**
+    * Kaki Negatif Elco ke **GND** Ethernet Shield
+    * Kaki Positif Elco diseri dengan **Resistor 220 Ohm**
+    * Kaki Resistor yang lain ke **Pin RES** Ethernet Shield
+
+---
+
+## Instalasi dan Konfigurasi
+
+1.  **Instalasi Arduino IDE:** Unduh dan instal [Arduino IDE](https://www.arduino.cc/en/software).
+2.  **Instalasi Library:**
+    Buka Arduino IDE, pergi ke `Sketch > Include Library > Manage Libraries...` dan cari serta instal library berikut:
+    * `Ethernet` (Biasanya sudah terinstal)
+    * `Wire` (Biasanya sudah terinstal)
+    * `RTClib` by Adafruit
+    * `LiquidCrystal I2C` by Frank de Brabander
+    * `NTPClient` by Fabrice Weinberg
+    * `EEPROM` (Biasanya sudah terinstal)
+3.  **Buka Kode Program:** Unduh file `.ino` dari repositori ini dan buka di Arduino IDE.
+4.  **Konfigurasi MAC Address:**
+    Pastikan `byte mac[]` pada baris `byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };` unik di jaringan Anda. Anda bisa menggunakan nilai default ini jika tidak ada perangkat lain dengan MAC yang sama.
+5.  **Konfigurasi NTP Server dan Offset:**
+    * `const char NTP_SERVER[] PROGMEM = "pool.ntp.org";` (Anda bisa mengganti server NTP jika perlu).
+    * `const long UTC_OFFSET_IN_SECONDS = 7L * 3600L;` (Ubah `7L` sesuai dengan zona waktu Anda. Untuk WIB adalah UTC+7).
+6.  **Konfigurasi Pin Relay:**
+    Pastikan `RELAY_PIN_1` dan `RELAY_PIN_2` sesuai dengan pin yang Anda gunakan (default 2 dan 3). Sesuaikan juga *logic* `HIGH` atau `LOW` pada `digitalWrite()` di fungsi `setup()` dan `loop()` agar sesuai dengan jenis relay board Anda (aktif HIGH atau aktif LOW).
+7.  **Upload Kode:** Pilih board Arduino Uno Anda dan port yang benar, lalu upload kode ke Arduino.
+ 
+---
+
+## Cara Kerja
+
+Setelah dinyalakan, Arduino akan:
+1.  **Memulai Inisialisasi:** Menginisialisasi semua komponen (LCD, RTC, Ethernet).
+2.  **Menunggu Modem Boot:** Memberi jeda 3 menit di awal agar modem memiliki waktu untuk *boot up* sepenuhnya dan mendapatkan IP.
+3.  **Sinkronisasi Waktu:** Mencoba sinkronisasi waktu dengan server NTP untuk mengatur RTC.
+4.  **Memantau Koneksi:** Secara terus-menerus melakukan ping ke `SERVER_TO_TEST` (default: 8.8.8.8) di *background*.
+5.  **Penanganan Offline:**
+    * Jika internet *offline*, sistem akan menunggu 1 menit.
+    * Jika masih *offline* setelah 1 menit, Arduino akan mengaktifkan relay untuk me-restart modem (memutus dan menyambung daya). Ini akan diulang hingga 3 kali.
+    * Setelah modem di-restart, sistem akan menunggu 3 menit untuk modem *boot* kembali sebelum mengecek koneksi lagi.
+6.  **Mode ISP Offline:** Jika ketiga percobaan restart gagal, sistem akan beralih ke mode "ISP Offline" dan hanya akan mencoba cek koneksi setiap 30 menit, menunjukkan bahwa masalah mungkin di luar kendali sistem (misalnya, gangguan dari ISP).
+7.  **Pencatatan Log:** Ketika internet *offline* dan kemudian *online* kembali, durasi *offline* akan dicatat dan disimpan di EEPROM.
+8.  **Tampilan LCD:** LCD akan terus memperbarui status internet, waktu saat ini. Dengan menekan tombol SELECT, Anda bisa beralih untuk melihat log waktu *offline* terakhir.
 
 ---
 
@@ -41,6 +135,8 @@ Revisi ini fokus pada peningkatan stabilitas, efisiensi, dan keandalan sistem.
     * Log durasi *offline* hanya disimpan ke EEPROM jika durasi *offline* mencapai **minimal 1 menit**, menghindari pencatatan *log* yang tidak signifikan.
 * **Peningkatan Tampilan LCD:**
     * Tampilan LCD dalam mode **ISP Offline** kini menampilkan hitungan mundur menuju pengecekan koneksi berikutnya (setiap 30 menit).
+* **Penambahan Rangkaian POR (Power-On Reset):**
+    * Memperbaiki error Ethernet Shield tidak respon ketika pertama kali menghidupkan alat.
 
 ---
 
