@@ -134,7 +134,7 @@ Revisi ini fokus pada peningkatan stabilitas, efisiensi, dan keandalan sistem.
 * **Penyimpanan Log EEPROM yang Lebih Detail:**
     * Log durasi *offline* hanya disimpan ke EEPROM jika durasi *offline* mencapai **minimal 1 menit**, menghindari pencatatan *log* yang tidak signifikan.
 * **Peningkatan Tampilan LCD:**
-    * Tampilan LCD dalam mode **ISP Offline** kini menampilkan hitungan mundur menuju pengecekan koneksi berikutnya (setiap 30 menit).
+    * Tampilan LCD dalam mode **ISP Offline** kini menampilkan hitungan mundur menuju pengecekan koneksi berikutnya (setiap 30 menit). Jika internet online kembali lebih awal, countdown 30 menit akan langsung dihentikan, sehingga sistem lebih responsif.
 * **Penambahan Rangkaian POR (Power-On Reset):**
     * Memperbaiki error Ethernet Shield tidak respon ketika pertama kali menghidupkan alat.
 
